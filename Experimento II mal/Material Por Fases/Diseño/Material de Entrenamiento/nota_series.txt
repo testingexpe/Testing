@@ -1,0 +1,11 @@
+
+NOTA A LA SOLUCIÓN DEL PROGRAMA SERIES:
+---------------------------------------
+
+En la solución del programa "series", los números de línea que aparecen no
+son correctos, los correctos son:
+
+	- Falta 1: línea 66 en lugar de 54
+	- Falta 2: Línea 69 en lugar de 57.
+	- Falta 3: Línea 98 en lugar de 88.
+	- Falta 4: Línea 90 en lugar de 82-83.

@@ -1,0 +1,326 @@
+     1	#include <stdio.h>
+     2	#include <assert.h>
+     3	#include <string.h>
+     4	#include <search.h>
+     5	extern char *tsearch(), *tfind(), *tdelete(), twalk();
+     6	#include "nametbl.h"
+     7	
+     8	NT *newtable(/*void*/)
+     9	{
+    10	  NT *ptr;
+    11	
+    12	  ptr = (NT *)malloc(sizeof(NT));
+    13	  assert(ptr != NULL);
+    14	  ptr->rootp = NULL;
+    15	  ptr->numitems = 0;
+    16	
+    17	  return ptr;
+    18	}
+    19	
+    20	int how_many(nt)
+    21	     NT *nt;
+    22	{
+    23	  return nt->numitems;
+    24	}
+    25	
+    26	int compare_entry(p1, p2)
+    27	     NTE *p1, *p2;
+    28	{
+    29	  return(strcmp(p1->name, p2->name));
+    30	}
+    31	
+    32	void print_entry(node)
+    33	     NTE *node;
+    34	{
+    35	  printf("Name    : %s\n", node->name);
+    36	  printf("oType   : %s\n", objectTypeName[node->ot]);
+    37	  printf("rType   : %s\n", resourceTypeName[node->rt]);
+    38	  printf("-----\n");
+    39	}
+    40	
+    41	void print_on_last_visit(nodep, order, level)
+    42	     NTE **nodep;
+    43	     VISIT order;
+    44	     int level;
+    45	{
+    46	  if (order == postorder || order == leaf)
+    47	    (void) print_entry(*nodep);
+    48	}
+    49	
+    50	void insert_entry(nt, new_name, new_ot, new_rt)
+    51	     NT                   *nt;
+    52	     char                 *new_name;
+    53	     enum objectType       new_ot;
+    54	     enum resourceType     new_rt;
+    55	{
+    56	  NTE *nte, **result;
+    57	
+    58	  nte = (NTE *) malloc(sizeof(NTE));
+    59	  assert(nte != NULL);
+    60	
+    61	  nte->name = strdup(new_name);
+    62	  assert(nte->name != NULL);
+    63	  nte->ot = new_ot;
+    64	  nte->rt = new_rt;
+    65	
+    66	  result = (NTE **) tsearch((char *)nte, &(nt->rootp), compare_entry); 
+    67	  assert((char *) *result == (char *) nte);
+    68	}
+    69	
+    70	NTE *retrieve_entry(nt, searchname)
+    71	     NT *nt;
+    72	     char *searchname;
+    73	{
+    74	  NTE **nte, *retval, key;
+    75	
+    76	  key.name = searchname;
+    77	  nte = (NTE **) tfind( (char *)&key, &(nt->rootp), compare_entry);
+    78	  if (nte != NULL)
+    79	    retval = *nte;
+    80	  else 
+    81	    retval = NULL;
+    82	
+    83	  return retval;
+    84	}
+    85	
+    86	int setObjType (nt, searchname, new_ot)
+    87	     NT *nt;
+    88	     char *searchname;
+    89	     enum objectType new_ot;
+    90	{
+    91	  int retval;
+    92	  NTE *nte;
+    93	
+    94	  retval = -1;
+    95	  nte = retrieve_entry(nt, searchname);
+    96	  if (nte != NULL)
+    97	    retval = 0;
+    98	
+    99	  return retval;
+   100	}
+   101	
+   102	int setResType (nt, searchname, new_rt)
+   103	     NT *nt;
+   104	     char *searchname;
+   105	     enum resourceType new_rt;
+   106	{
+   107	  int retval;
+   108	  NTE *nte;
+   109	
+   110	  retval = -1;
+   111	  nte = retrieve_entry(nt, searchname);
+   112	  if (nte != NULL)
+   113	    retval = 0;
+   114	    nte->rt = new_rt;
+   115	
+   116	  return retval;
+   117	}
+   118	
+   119	int ins(nt, new_name)
+   120	     NT *nt;
+   121	     char *new_name;
+   122	{
+   123	  int retval;
+   124	  NTE *nte;
+   125	 
+   126	  nte = retrieve_entry(nt, new_name);
+   127	  if (nte != NULL) {
+   128	    printf("The Name `%s' is already in the Tble.\n", new_name);
+   129	    retval = -1;
+   130	  }
+   131	  else {
+   132	    insert_entry(nt, new_name, OT_NO_INF);
+   133	    retval = 0;
+   134	  }
+   135	
+   136	  return retval;
+   137	}
+   138	
+   139	int tot(nt, new_name, new_ot_char)
+   140	     NT *nt;
+   141	     char *new_name;
+   142	     char *new_ot_char;
+   143	{
+   144	  int rc;
+   145	  enum objectType new_ot;
+   146	
+   147	  new_ot = -1;
+   148	  if (strcmp("SYSTEM", new_ot_char) == 0)
+   149	     new_ot = SYSTEM;
+   150	  else if (strcmp("RESOURCE", new_ot_char) == 0)
+   151	       new_ot = RESOURCE;
+   152	
+   153	  if (new_ot == -1) {
+   154	    printf("Type `%s' not recognised\n", new_ot_char);
+   155	    rc = -1;
+   156	  }
+   157	  else {
+   158	    rc = setObjType(nt, new_name, new_ot);
+   159	    if (rc)
+   160	      printf("The Name `%s' is not in the Table.\n", new_name);
+   161	  }
+   162	
+   163	  return rc;
+   164	}
+   165	
+   166	int trt(nt, new_name, new_rt_char)
+   167	     NT *nt;
+   168	     char *new_name;
+   169	     char *new_rt_char;
+   170	{
+   171	  int rc;
+   172	  enum resourceType new_rt;
+   173	
+   174	  new_rt = -1;
+   175	  if (strcmp("RT_SYSTEM", new_rt_char) == 0)
+   176	     new_rt = RT_SYSTEM;
+   177	  else if (strcmp("FUNKTION", new_rt_char) == 0)
+   178	       new_rt = FUNCTION;
+   179	       else if (strcmp("DATA", new_rt_char) == 0)
+   180	            new_rt = DATA;
+   181	
+   182	  if (new_rt == -1) {
+   183	    printf("Type `%s' not recognised\n", new_rt_char);
+   184	    rc = -1;
+   185	  }
+   186	  else {
+   187	    rc = setResType(nt, new_name, new_rt);
+   188	    if (rc)
+   189	      printf("The Name `%s' is not in the Table.\n", new_name);
+   190	  }
+   191	
+   192	  return rc;
+   193	}
+   194	
+   195	void sch(nt, name)
+   196	     NT *nt;
+   197	     char *name;
+   198	{
+   199	  NTE *nte;
+   200	
+   201	  printf("Search for Name `%s':\n", name);
+   202	  nte = retrieve_entry(nt, name);
+   203	  if (nte != NULL)
+   204	    print_entry(nte);
+   205	}
+   206	
+   207	void prt(nt)
+   208	     NT *nt;
+   209	{
+   210	  printf("The Table has the following %d entries:\n", how_many(nt));
+   211	  twalk((char *)nt->rootp, print_on_last_visit);
+   212	}
+   213	
+   214	
+   215	
+   216	/**********************************************************************/
+   217	/*                   TEST HARNESS OVER THE PAGE                       */
+   218	/*                                                                    */
+   219	/*          NO TEST CASES / ABSTRACTIONS BEYOND THIS POINT            */
+   220	/**********************************************************************/
+   221	
+   222	
+   223	
+   224	
+   225	
+   226	
+   227	
+   228	
+   229	
+   230	
+   231	
+   232	
+   233	
+   234	
+   235	
+   236	
+   237	
+   238	
+   239	
+   240	
+   241	
+   242	
+   243	
+   244	
+   245	
+   246	
+   247	
+   248	
+   249	
+   250	
+   251	
+   252	
+   253	
+   254	
+   255	
+   256	
+   257	
+   258	
+   259	
+   260	
+   261	
+   262	
+   263	
+   264	
+   265	
+   266	/*******************************************************************************
+   267	 * From here on is the test harness
+   268	 * Do not create any test cases or build abstractions 
+   269	 * for this part of the code.
+   270	 *******************************************************************************/
+   271	
+   272	
+   273	void process_commands(filep)
+   274	     FILE *filep;
+   275	{
+   276	  NT *nt;
+   277	  char *ptr;
+   278	  char buf[BUFSIZ], command[BUFSIZ], name[BUFSIZ], typ[BUFSIZ];
+   279	
+   280	  nt = newtable();
+   281	  assert (nt != NULL);
+   282	
+   283	  while (fgets(buf, sizeof(buf), filep) != NULL) {
+   284	    if ( (ptr = strchr(buf, '\n')) != NULL)
+   285	      *ptr = '\0';
+   286	    printf("\nLine `%s' being processed:\n", buf);
+   287	    *command = '\0';
+   288	    *name = '\0';
+   289	    *typ = '\0';
+   290	    sscanf(buf, "%s %s %s", command, name, typ);
+   291	    if (strcmp(command, "ins") == 0)
+   292	      ins(nt, name);
+   293	    else if (strcmp(command, "tot") == 0) 
+   294	         tot(nt, name, typ);
+   295	         else if (strcmp(command, "trt") == 0)
+   296	              trt(nt, name, typ);
+   297	              else if (strcmp(command, "sch") == 0)
+   298	                   sch(nt, name);
+   299	                   else if (strcmp(command, "prt") == 0)
+   300	                        prt(nt);
+   301	                        else printf("Command `%s' not recognised\n", command);
+   302	  }
+   303	}
+   304	
+   305	int main(argc, argv)
+   306	     int argc; char **argv;
+   307	{
+   308	  NT *nt;
+   309	  FILE *filep;
+   310	  char *file;
+   311	
+   312	  if (argc != 2)
+   313	    fprintf(stderr, "Usage: %s Data\n", *argv);
+   314	  else {
+   315	    file = argv[1];
+   316	    if ((filep = fopen(file, "r")) == NULL)
+   317	      perror(file);
+   318	    else {
+   319	      printf("Input file `%s' being processed.\n", file);
+   320	      process_commands(filep, nt);
+   321	      printf("End of input file `%s'.\n", file); 
+   322	      fclose(filep);
+   323	    }
+   324	  }
+   325	  return 0;
+   326	}
